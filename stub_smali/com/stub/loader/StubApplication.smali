@@ -41,10 +41,10 @@
     invoke-virtual {v2, v3, v14, v15}, Ljava/io/InputStream;->read([BII)I
     invoke-virtual {v2}, Ljava/io/InputStream;->close()V
     const/4 v14, 0x0
-    const/4 v15, 0x20
+    const/16 v15, 0x20
     invoke-static {v3, v14, v15}, Ljava/util/Arrays;->copyOfRange([BII)[B
     move-result-object v4
-    const/4 v14, 0x20
+    const/16 v14, 0x20
     const/16 v15, 0x30
     invoke-static {v3, v14, v15}, Ljava/util/Arrays;->copyOfRange([BII)[B
     move-result-object v5
