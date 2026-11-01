@@ -10,7 +10,7 @@ RUN wget -q https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apkt
     printf '#!/bin/sh\nexec java -jar /usr/local/bin/apktool.jar "$@"\n' > /usr/local/bin/apktool && \
     chmod +x /usr/local/bin/apktool
 
-# zipalign + apksigner via cmdline-tools
+# zipalign + apksigner
 RUN wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdtools.zip && \
     mkdir -p /opt/android-sdk/cmdline-tools && \
     unzip -q /tmp/cmdtools.zip -d /opt/android-sdk/cmdline-tools && \
@@ -29,7 +29,9 @@ ENV NDK=/opt/android-ndk-r26d
 WORKDIR /app
 COPY . .
 
-RUN pip3 install --break-system-packages -q flask gunicorn pycryptodome
+RUN wget -q https://bootstrap.pypa.io/get-pip.py -O /tmp/get-pip.py && \
+    python3 /tmp/get-pip.py && \
+    pip3 install flask gunicorn pycryptodome
 
 RUN mkdir -p /app/jni/build_arm64 && cd /app/jni/build_arm64 && \
     cmake .. \
