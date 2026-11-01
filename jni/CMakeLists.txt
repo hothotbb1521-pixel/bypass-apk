@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.22)
+project(hooks C)
+add_library(hooks SHARED hooks.c)
+target_link_libraries(hooks android log)
+set_target_properties(hooks PROPERTIES C_STANDARD 11)
+target_compile_options(hooks PRIVATE -O2 -fvisibility=hidden)
