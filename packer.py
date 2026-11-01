@@ -47,7 +47,7 @@ def repack(input_apk, output_apk, app_name=None, icon_path=None, visual="playsto
                                  if n.startswith("classes") and n.endswith(".dex"))
         enc_dex, key_iv = encrypt_dex(dex_bytes)
 
-        subprocess.run(["apktool","d",input_apk,"-o",decoded,"--force","--no-res"],
+        subprocess.run(["apktool","d",input_apk,"-o",decoded,"--force"],
                        check=True, capture_output=True)
 
         manifest = os.path.join(decoded,"AndroidManifest.xml")
@@ -104,6 +104,7 @@ def repack(input_apk, output_apk, app_name=None, icon_path=None, visual="playsto
         ensure_keystore()
         apksigner = find_tool("apksigner")
         r = subprocess.run([apksigner,"sign",
+            "--min-sdk-version","21",
             "--ks",str(KEYSTORE),"--ks-pass","pass:bypass123",
             "--key-pass","pass:bypass123","--ks-key-alias","bypass",
             "--out",output_apk, aligned],
