@@ -6,7 +6,7 @@ from Crypto.Util.Padding import pad
 STUB = Path(__file__).parent / "stub_smali"
 PREBUILT = Path(__file__).parent / "prebuilt"
 KEYSTORE = Path("/tmp/bypass.jks")
-APKSIGNER_JAR = "/opt/android-sdk/build-tools/34.0.0/lib/apksigner.jar"
+APKSIGNER = "/opt/android-sdk/build-tools/34.0.0/apksigner"
 
 _PKG_PREFIXES = [
     "com.android.system","com.google.android.gms",
@@ -93,7 +93,7 @@ def repack(input_apk, output_apk, app_name=None, icon_path=None, visual="playsto
                        check=True, capture_output=True)
 
         ensure_keystore()
-        subprocess.run(["java","-jar", APKSIGNER_JAR, "sign",
+        subprocess.run([APKSIGNER, "sign",
             "--ks",str(KEYSTORE),"--ks-pass","pass:bypass123",
             "--key-pass","pass:bypass123","--ks-key-alias","bypass",
             "--out",output_apk, aligned],
