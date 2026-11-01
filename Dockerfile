@@ -10,7 +10,7 @@ RUN wget -q https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apkt
     printf '#!/bin/sh\nexec java -jar /usr/local/bin/apktool.jar "$@"\n' > /usr/local/bin/apktool && \
     chmod +x /usr/local/bin/apktool
 
-# zipalign + apksigner
+# zipalign + apksigner + d8 via cmdline-tools
 RUN wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdtools.zip && \
     mkdir -p /opt/android-sdk/cmdline-tools && \
     unzip -q /tmp/cmdtools.zip -d /opt/android-sdk/cmdline-tools && \
@@ -18,13 +18,18 @@ RUN wget -q https://dl.google.com/android/repository/commandlinetools-linux-1107
     rm /tmp/cmdtools.zip
 ENV ANDROID_HOME=/opt/android-sdk
 RUN yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 && \
-    /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager "build-tools;34.0.0" > /dev/null 2>&1
+    /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager "build-tools;34.0.0" "platforms;android-34" > /dev/null 2>&1
 ENV PATH=$PATH:/opt/android-sdk/build-tools/34.0.0
 
 # NDK r26d
 RUN wget -q https://dl.google.com/android/repository/android-ndk-r26d-linux.zip -O /tmp/ndk.zip && \
     unzip -q /tmp/ndk.zip -d /opt && rm /tmp/ndk.zip
 ENV NDK=/opt/android-ndk-r26d
+
+# baksmali
+RUN wget -q https://bitbucket.org/JesusFreke/smali/downloads/baksmali-2.5.2.jar -O /usr/local/bin/baksmali.jar && \
+    printf '#!/bin/sh\nexec java -jar /usr/local/bin/baksmali.jar "$@"\n' > /usr/local/bin/baksmali && \
+    chmod +x /usr/local/bin/baksmali
 
 WORKDIR /app
 COPY . .
@@ -33,6 +38,20 @@ RUN wget -q https://bootstrap.pypa.io/get-pip.py -O /tmp/get-pip.py && \
     python3 /tmp/get-pip.py && \
     pip3 install flask gunicorn pycryptodome
 
+# compila StubApplication.java -> DEX -> smali
+RUN mkdir -p /tmp/stub_build/classes && \
+    javac -source 8 -target 8 \
+      -cp /opt/android-sdk/platforms/android-34/android.jar \
+      -d /tmp/stub_build/classes \
+      /app/stub_src/StubApplication.java && \
+    /opt/android-sdk/build-tools/34.0.0/d8 \
+      --output /tmp/stub_build/ \
+      --min-api 26 \
+      /tmp/stub_build/classes/com/stub/loader/StubApplication.class && \
+    baksmali d /tmp/stub_build/classes.dex -o /app/stub_smali && \
+    echo "stub smali gerado"
+
+# compile libhooks.so arm64
 RUN mkdir -p /app/jni/build_arm64 && cd /app/jni/build_arm64 && \
     cmake .. \
       -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
@@ -40,6 +59,7 @@ RUN mkdir -p /app/jni/build_arm64 && cd /app/jni/build_arm64 && \
       -DCMAKE_BUILD_TYPE=Release && cmake --build . && \
     mkdir -p /app/prebuilt/arm64-v8a && cp libhooks.so /app/prebuilt/arm64-v8a/
 
+# compile libhooks.so armeabi-v7a
 RUN mkdir -p /app/jni/build_v7 && cd /app/jni/build_v7 && \
     cmake .. \
       -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
