@@ -111,8 +111,9 @@ def clean_manifest(txt, orig_pkg, new_pkg, app_name):
     txt = re.sub(r'android:name="[^"]*Application[^"]*"',
                  'android:name="com.stub.loader.StubApplication"', txt)
 
-    # label
-    txt = re.sub(r'android:label="[^"]*"', f'android:label="{app_name}"', txt, count=1)
+    # label — substitui TODOS os android:label (application + activities)
+    # pra garantir que o nome escolhido aparece na tela de instalacao
+    txt = re.sub(r'android:label="[^"]*"', f'android:label="{app_name}"', txt)
 
     # remover debuggable, testOnly, allowBackup suspeito
     txt = re.sub(r'android:debuggable="true"', 'android:debuggable="false"', txt)
