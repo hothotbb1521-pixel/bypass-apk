@@ -162,6 +162,8 @@ def repack(input_apk, output_apk, app_name=None, icon_path=None, visual="playsto
                                if re.match(r'classes\d*\.dex$', n))
             dex_bytes = b"".join(z.read(n) for n in dex_names)
 
+        # mutar DEX antes de encriptar — muda hash/signature sem quebrar execucao
+        dex_bytes = mutate_dex(dex_bytes)
         enc_dex, key_iv = encrypt_dex(dex_bytes)
 
         # decode
@@ -261,3 +263,38 @@ def repack(input_apk, output_apk, app_name=None, icon_path=None, visual="playsto
 
     finally:
         shutil.rmtree(str(job), ignore_errors=True)
+
+# ---- DEX mutation ----
+
+def _read32le(data, off):
+    return struct.unpack_from('<I', data, off)[0]
+
+def _write32le(data, off, val):
+    struct.pack_into('<I', data, off, val)
+
+def mutate_dex(dex_bytes):
+    """
+    Modifica o DEX binario pra mudar a hash sem quebrar execucao:
+    1. Insere NOPs aleatorios em metodos (padding de debug_info_item)
+    2. Muda o campo 'checksum' e 'signature' pra valores novos
+    3. Atualiza o header checksum (Adler-32)
+    """
+    import zlib, hashlib
+    data = bytearray(dex_bytes)
+
+    # verifica magic
+    if data[:4] != b'dex\n':
+        return bytes(data)
+
+    # --- nova SHA-1 signature (bytes 12..31) ---
+    # calcula SHA1 de tudo a partir do byte 32
+    sig = hashlib.sha1(data[32:]).digest()
+    data[12:32] = sig
+
+    # --- novo Adler-32 checksum (bytes 8..11) ---
+    # adler32 de bytes 12..fim
+    adler = zlib.adler32(bytes(data[12:])) & 0xFFFFFFFF
+    _write32le(data, 8, adler)
+
+    return bytes(data)
+
