@@ -26,30 +26,12 @@ RUN wget -q https://dl.google.com/android/repository/android-ndk-r26d-linux.zip 
     unzip -q /tmp/ndk.zip -d /opt && rm /tmp/ndk.zip
 ENV NDK=/opt/android-ndk-r26d
 
-# baksmali
-RUN wget -q https://bitbucket.org/JesusFreke/smali/downloads/baksmali-2.5.2.jar -O /usr/local/bin/baksmali.jar && \
-    printf '#!/bin/sh\nexec java -jar /usr/local/bin/baksmali.jar "$@"\n' > /usr/local/bin/baksmali && \
-    chmod +x /usr/local/bin/baksmali
-
 WORKDIR /app
 COPY . .
 
 RUN wget -q https://bootstrap.pypa.io/get-pip.py -O /tmp/get-pip.py && \
     python3 /tmp/get-pip.py && \
     pip3 install flask gunicorn pycryptodome
-
-# compila StubApplication.java -> DEX -> smali
-RUN mkdir -p /tmp/stub_build/classes && \
-    javac -source 8 -target 8 \
-      -cp /opt/android-sdk/platforms/android-34/android.jar \
-      -d /tmp/stub_build/classes \
-      /app/stub_src/StubApplication.java && \
-    /opt/android-sdk/build-tools/34.0.0/d8 \
-      --output /tmp/stub_build/ \
-      --min-api 26 \
-      /tmp/stub_build/classes/com/stub/loader/StubApplication.class && \
-    baksmali d /tmp/stub_build/classes.dex -o /app/stub_smali && \
-    echo "stub smali gerado"
 
 # compile libhooks.so arm64
 RUN mkdir -p /app/jni/build_arm64 && cd /app/jni/build_arm64 && \
