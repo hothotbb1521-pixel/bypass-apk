@@ -1,7 +1,7 @@
 .class public Lcom/stub/loader/StubApplication;
 .super Landroid/app/Application;
 
-.field private dexLoader:Ldalvik/system/InMemoryDexClassLoader;
+.field private realApp:Landroid/app/Application;
 
 .method public constructor <init>()V
     .registers 1
@@ -25,15 +25,19 @@
 .end method
 
 .method public onCreate()V
-    .registers 1
+    .registers 2
     invoke-super {p0}, Landroid/app/Application;->onCreate()V
+    iget-object v0, p0, Lcom/stub/loader/StubApplication;->realApp:Landroid/app/Application;
+    if-eqz v0, :skip
+    invoke-virtual {v0}, Landroid/app/Application;->onCreate()V
+    :skip
     return-void
 .end method
 
 .method private loadPayload(Landroid/content/Context;)V
     .registers 16
 
-    # --- ler k.bin (key 32 bytes + iv 16 bytes = 48 bytes) ---
+    # ler k.bin (32 key + 16 iv = 48 bytes)
     invoke-virtual {p1}, Landroid/content/Context;->getAssets()Landroid/content/res/AssetManager;
     move-result-object v0
     const-string v1, "k.bin"
@@ -47,30 +51,27 @@
     invoke-virtual {v2, v3, v14, v15}, Ljava/io/InputStream;->read([BII)I
     invoke-virtual {v2}, Ljava/io/InputStream;->close()V
 
-    # key = kb[0..32)
     const/4 v14, 0x0
     const/16 v15, 0x20
     invoke-static {v3, v14, v15}, Ljava/util/Arrays;->copyOfRange([BII)[B
     move-result-object v4
 
-    # iv = kb[32..48)
     const/16 v14, 0x20
     const/16 v15, 0x30
     invoke-static {v3, v14, v15}, Ljava/util/Arrays;->copyOfRange([BII)[B
     move-result-object v5
 
-    # --- ler p.bin (dex criptografado) ---
+    # ler p.bin (dex encriptado)
     invoke-virtual {p1}, Landroid/content/Context;->getAssets()Landroid/content/res/AssetManager;
     move-result-object v0
     const-string v1, "p.bin"
     invoke-virtual {v0, v1}, Landroid/content/res/AssetManager;->open(Ljava/lang/String;)Ljava/io/InputStream;
     move-result-object v6
-
     invoke-static {v6}, Lcom/stub/loader/StubApplication;->readAll(Ljava/io/InputStream;)[B
     move-result-object v7
     invoke-virtual {v6}, Ljava/io/InputStream;->close()V
 
-    # --- AES/CBC decrypt ---
+    # decrypt AES/CBC
     new-instance v8, Ljavax/crypto/spec/SecretKeySpec;
     const-string v0, "AES"
     invoke-direct {v8, v4, v0}, Ljavax/crypto/spec/SecretKeySpec;-><init>([BLjava/lang/String;)V
@@ -88,7 +89,7 @@
     invoke-virtual {v10, v7}, Ljavax/crypto/Cipher;->doFinal([B)[B
     move-result-object v11
 
-    # --- InMemoryDexClassLoader ---
+    # criar InMemoryDexClassLoader
     invoke-static {v11}, Ljava/nio/ByteBuffer;->wrap([B)Ljava/nio/ByteBuffer;
     move-result-object v12
 
@@ -98,8 +99,31 @@
     new-instance v0, Ldalvik/system/InMemoryDexClassLoader;
     invoke-direct {v0, v12, v13}, Ldalvik/system/InMemoryDexClassLoader;-><init>(Ljava/nio/ByteBuffer;Ljava/lang/ClassLoader;)V
 
-    # salvar loader no campo
-    iput-object v0, p0, Lcom/stub/loader/StubApplication;->dexLoader:Ldalvik/system/InMemoryDexClassLoader;
+    # ler nome da Application original de a.bin
+    invoke-virtual {p1}, Landroid/content/Context;->getAssets()Landroid/content/res/AssetManager;
+    move-result-object v1
+    const-string v2, "a.bin"
+    invoke-virtual {v1, v2}, Landroid/content/res/AssetManager;->open(Ljava/lang/String;)Ljava/io/InputStream;
+    move-result-object v2
+    invoke-static {v2}, Lcom/stub/loader/StubApplication;->readAll(Ljava/io/InputStream;)[B
+    move-result-object v3
+    invoke-virtual {v2}, Ljava/io/InputStream;->close()V
+    new-instance v1, Ljava/lang/String;
+    invoke-direct {v1, v3}, Ljava/lang/String;-><init>([B)V
+
+    # loadClass(nome) via novo classloader
+    invoke-virtual {v0, v1}, Ljava/lang/ClassLoader;->loadClass(Ljava/lang/String;)Ljava/lang/Class;
+    move-result-object v2
+
+    # instanciar a Application real
+    invoke-virtual {v2}, Ljava/lang/Class;->newInstance()Ljava/lang/Object;
+    move-result-object v3
+
+    check-cast v3, Landroid/app/Application;
+    iput-object v3, p0, Lcom/stub/loader/StubApplication;->realApp:Landroid/app/Application;
+
+    # chamar attachBaseContext na app real
+    invoke-virtual {v3, p1}, Landroid/app/Application;->attachBaseContext(Landroid/content/Context;)V
 
     return-void
 .end method
