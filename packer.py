@@ -44,7 +44,7 @@ def repack(input_apk, output_apk, app_name=None, icon_path=None, visual="playsto
                        check=True, capture_output=True)
 
         manifest = os.path.join(decoded,"AndroidManifest.xml")
-        m = re.search(r'package="([^"]+)"', open(manifest).read())
+        m = re.search(r'package="([^"]+)"', open(manifest, encoding="utf-8", errors="replace").read())
         orig_pkg = m.group(1) if m else "com.original.app"
         new_pkg  = random_package()
 
@@ -66,7 +66,7 @@ def repack(input_apk, output_apk, app_name=None, icon_path=None, visual="playsto
                 os.makedirs(lib_dir, exist_ok=True)
                 shutil.copy(str(so), os.path.join(lib_dir,"libhooks.so"))
 
-        txt = open(manifest).read()
+        txt = open(manifest, encoding="utf-8", errors="replace").read()
         txt = txt.replace(f'package="{orig_pkg}"', f'package="{new_pkg}"')
         txt = re.sub(r'android:name="[^"]*Application"',
                      'android:name="com.stub.loader.StubApplication"', txt)
@@ -74,7 +74,7 @@ def repack(input_apk, output_apk, app_name=None, icon_path=None, visual="playsto
             txt = re.sub(r'android:label="[^"]*"', f'android:label="{app_name}"', txt, count=1)
         if "installLocation" not in txt:
             txt = txt.replace("<manifest ", '<manifest android:installLocation="preferExternal" ', 1)
-        open(manifest,"w").write(txt)
+        open(manifest, "w", encoding="utf-8").write(txt)
 
         if icon_path:
             for d in Path(decoded).rglob("*"):
