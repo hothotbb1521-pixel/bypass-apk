@@ -1,50 +1,112 @@
 .class public Lcom/stub/loader/StubApplication;
 .super Landroid/app/Application;
+
 .method public constructor <init>()V
-    .locals 0
+    .registers 1
     invoke-direct {p0}, Landroid/app/Application;-><init>()V
     return-void
 .end method
+
 .method public attachBaseContext(Landroid/content/Context;)V
-    .locals 2
-    invoke-super {p0,p1},Landroid/app/Application;->attachBaseContext(Landroid/content/Context;)V
-    :try_start
-    const-string v1,"hooks"
-    invoke-static {v1},Ljava/lang/System;->loadLibrary(Ljava/lang/String;)V
-    invoke-static {p1},Lcom/stub/loader/RuntimeHooks;->install(Landroid/content/Context;)V
-    :try_end
-    .catch Ljava/lang/Throwable; {:try_start..:try_end} :catch_all
-    :catch_all
-    invoke-virtual {p0,p1},Lcom/stub/loader/StubApplication;->loadPayload(Landroid/content/Context;)V
+    .registers 3
+    invoke-super {p0, p1}, Landroid/app/Application;->attachBaseContext(Landroid/content/Context;)V
+    invoke-direct {p0, p1}, Lcom/stub/loader/StubApplication;->loadPayload(Landroid/content/Context;)V
     return-void
 .end method
+
+.method public onCreate()V
+    .registers 1
+    invoke-super {p0}, Landroid/app/Application;->onCreate()V
+    return-void
+.end method
+
 .method private loadPayload(Landroid/content/Context;)V
-    .locals 6
-    :try_start
-    const-string v0,"k.bin"
-    invoke-virtual {p0,p1,v0},Lcom/stub/loader/StubApplication;->readAsset(Landroid/content/Context;Ljava/lang/String;)[B
-    move-result-object v0
-    const-string v1,"p.bin"
-    invoke-virtual {p0,p1,v1},Lcom/stub/loader/StubApplication;->readAsset(Landroid/content/Context;Ljava/lang/String;)[B
+    .registers 15
+
+    # --- ler k.bin (48 bytes: key[32] + iv[16]) ---
+    const-string v0, "k.bin"
+    invoke-virtual {p1, v0}, Landroid/content/Context;->getAssets()Landroid/content/res/AssetManager;
     move-result-object v1
-    new-instance v2,Ldalvik/system/InMemoryDexClassLoader;
-    invoke-virtual {p1},Landroid/content/Context;->getClassLoader()Ljava/lang/ClassLoader;
-    move-result-object v3
-    :try_end
-    .catch Ljava/lang/Throwable; {:try_start..:try_end} :catch_load
-    :catch_load
+    invoke-virtual {v1, v0}, Landroid/content/res/AssetManager;->open(Ljava/lang/String;)Ljava/io/InputStream;
+    move-result-object v2
+
+    const/16 v3, 0x30
+    new-array v4, v3, [B
+    const/4 v5, 0x0
+    invoke-virtual {v2, v4, v5, v3}, Ljava/io/InputStream;->read([BII)I
+    invoke-virtual {v2}, Ljava/io/InputStream;->close()V
+
+    # key = k.bin[0..31]
+    const/4 v5, 0x0
+    const/4 v6, 0x20
+    invoke-static {v4, v5, v6}, Ljava/util/Arrays;->copyOfRange([BII)[B
+    move-result-object v7
+
+    # iv = k.bin[32..47]
+    const/4 v5, 0x20
+    const/16 v6, 0x30
+    invoke-static {v4, v5, v6}, Ljava/util/Arrays;->copyOfRange([BII)[B
+    move-result-object v8
+
+    # --- ler p.bin (payload encriptado) ---
+    const-string v0, "p.bin"
+    invoke-virtual {p1}, Landroid/content/Context;->getAssets()Landroid/content/res/AssetManager;
+    move-result-object v1
+    invoke-virtual {v1, v0}, Landroid/content/res/AssetManager;->open(Ljava/lang/String;)Ljava/io/InputStream;
+    move-result-object v9
+
+    invoke-static {v9}, Lcom/stub/loader/StubApplication;->readAllBytes(Ljava/io/InputStream;)[B
+    move-result-object v10
+    invoke-virtual {v9}, Ljava/io/InputStream;->close()V
+
+    # --- AES/CBC decrypt ---
+    const-string v0, "AES"
+    invoke-static {v0}, Ljavax/crypto/spec/SecretKeySpec;->new(Ljava/lang/String;)V
+    # usa SecretKeySpec e IvParameterSpec via reflection pra compatibilidade
+
+    new-instance v11, Ljavax/crypto/spec/SecretKeySpec;
+    const-string v0, "AES"
+    invoke-direct {v11, v7, v0}, Ljavax/crypto/spec/SecretKeySpec;-><init>([BLjava/lang/String;)V
+
+    new-instance v12, Ljavax/crypto/spec/IvParameterSpec;
+    invoke-direct {v12, v8}, Ljavax/crypto/spec/IvParameterSpec;-><init>([B)V
+
+    const-string v0, "AES/CBC/PKCS5Padding"
+    invoke-static {v0}, Ljavax/crypto/Cipher;->getInstance(Ljava/lang/String;)Ljavax/crypto/Cipher;
+    move-result-object v13
+
+    const/4 v0, 0x2
+    invoke-virtual {v13, v0, v11, v12}, Ljavax/crypto/Cipher;->init(ILjava/security/Key;Ljava/security/spec/AlgorithmParameterSpec;)V
+    invoke-virtual {v13, v10}, Ljavax/crypto/Cipher;->doFinal([B)[B
+    move-result-object v14
+
+    # --- InMemoryDexClassLoader (API 26+) ---
+    invoke-static {v14}, Ljava/nio/ByteBuffer;->wrap([B)Ljava/nio/ByteBuffer;
+    move-result-object v0
+
+    invoke-virtual {p1}, Landroid/content/Context;->getClassLoader()Ljava/lang/ClassLoader;
+    move-result-object v1
+
+    new-instance v2, Ldalvik/system/InMemoryDexClassLoader;
+    invoke-direct {v2, v0, v1}, Ldalvik/system/InMemoryDexClassLoader;-><init>(Ljava/nio/ByteBuffer;Ljava/lang/ClassLoader;)V
+
     return-void
 .end method
-.method private readAsset(Landroid/content/Context;Ljava/lang/String;)[B
-    .locals 4
-    invoke-virtual {p1},Landroid/content/Context;->getAssets()Landroid/content/res/AssetManager;
-    move-result-object v0
-    invoke-virtual {v0,p2},Landroid/content/res/AssetManager;->open(Ljava/lang/String;)Ljava/io/InputStream;
-    move-result-object v0
-    invoke-virtual {v0},Ljava/io/InputStream;->available()I
-    move-result v1
-    new-array v2,v1,[B
-    invoke-virtual {v0,v2},Ljava/io/InputStream;->read([B)I
-    invoke-virtual {v0},Ljava/io/InputStream;->close()V
-    return-object v2
+
+.method private static readAllBytes(Ljava/io/InputStream;)[B
+    .registers 6
+    new-instance v0, Ljava/io/ByteArrayOutputStream;
+    invoke-direct {v0}, Ljava/io/ByteArrayOutputStream;-><init>()V
+    const/16 v1, 0x1000
+    new-array v2, v1, [B
+    :loop
+    invoke-virtual {p0, v2, 0x0, v1}, Ljava/io/InputStream;->read([BII)I
+    move-result v3
+    if-ltz v3, :done
+    invoke-virtual {v0, v2, 0x0, v3}, Ljava/io/ByteArrayOutputStream;->write([BII)V
+    goto :loop
+    :done
+    invoke-virtual {v0}, Ljava/io/ByteArrayOutputStream;->toByteArray()[B
+    move-result-object v4
+    return-object v4
 .end method
